@@ -234,7 +234,6 @@ void SwitchRenderer::UpdateFrame(RenderedFrame& frame)
 		SwitchLog("Can't update frame due to renderer error\n");
 		return;
 	}
-	auto lock = _frameLock.AcquireSafe();
 	SetFrameSize(frame.Width, frame.Height);
 	memcpy(_backBuffer, frame.FrameBuffer, frame.Width * frame.Height * sizeof(uint32_t));
 	_hasFrame = true;
@@ -242,7 +241,6 @@ void SwitchRenderer::UpdateFrame(RenderedFrame& frame)
 
 void SwitchRenderer::ClearFrame()
 {
-	auto lock = _frameLock.AcquireSafe();
 	if(_frontBuffer && _backBuffer) {
 		memset(_backBuffer, 0, _frameWidth * _frameHeight * sizeof(uint32_t));
 		_hasFrame = true;
@@ -357,8 +355,6 @@ void SwitchRenderer::Render(RenderSurfaceInfo& emuHud, RenderSurfaceInfo& script
 	uint32_t* present = nullptr;
 
 	{
-		auto lock = _frameLock.AcquireSafe();
-
 		dkQueueWaitIdle(_queue);
 
 		if(!_hasFrame) {
