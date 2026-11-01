@@ -220,6 +220,9 @@ int main(int argc, char* argv[])
 	}
 	SwitchLog("Running in %s mode\n", ConsoleTypeName(emu->GetConsoleType()));
 
+	/* Pin emulation thread to core 0 */
+	svcSetThreadCoreMask(CUR_THREAD_HANDLE, 1, 0);
+
 	emu->Run();
 
 	// emu->Stop(true);
