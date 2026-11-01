@@ -36,8 +36,12 @@ private:
 
 	// Emulator frame
 	SimpleLock _frameLock;
+	DkMemBlock _frontMemBlock = nullptr;
+	DkMemBlock _backMemBlock = nullptr;
 	uint32_t* _frontBuffer = nullptr; // consumed by the render thread
 	uint32_t* _backBuffer = nullptr; // written by the emulation thread
+	DkGpuAddr _frontGpuAddr = 0;
+	DkGpuAddr _backGpuAddr = 0;
 	uint32_t* _presentBuffer = nullptr; // stable buffer for GPU upload (never reallocated)
 	uint32_t _frameWidth = 0;
 	uint32_t _frameHeight = 0;

@@ -151,6 +151,29 @@ SwitchRenderer::SwitchRenderer(Emulator* emu) : _emu(emu)
 	_sampler.wrapMode[2] = DkWrapMode_ClampToEdge;
 
 	_initialized = true;
+
+	uint32_t maxBufSize = (TexSize * TexSize * sizeof(uint32_t) + 0xFFF) & ~0xFFF;
+	DkMemBlockMaker frameMemMaker;
+	dkMemBlockMakerDefaults(&frameMemMaker, _device, maxBufSize);
+	frameMemMaker.flags = DkMemBlockFlags_CpuUncached | DkMemBlockFlags_GpuCached;
+	_frontMemBlock = dkMemBlockCreate(&frameMemMaker);
+	_backMemBlock = dkMemBlockCreate(&frameMemMaker);
+	if(_frontMemBlock && _backMemBlock) {
+		_frontBuffer = (uint32_t*)dkMemBlockGetCpuAddr(_frontMemBlock);
+		_backBuffer = (uint32_t*)dkMemBlockGetCpuAddr(_backMemBlock);
+		_frontGpuAddr = dkMemBlockGetGpuAddr(_frontMemBlock);
+		_backGpuAddr = dkMemBlockGetGpuAddr(_backMemBlock);
+		if(!_frontGpuAddr || !_backGpuAddr) {
+			SwitchLog("Bad GPU address\n");
+		}
+	} else {
+		SwitchLog("Fallback to CPU\n");
+		_frontBuffer = new uint32_t[TexSize * TexSize];
+		_backBuffer = new uint32_t[TexSize * TexSize];
+		_frontGpuAddr = 0;
+		_backGpuAddr = 0;
+	}
+
 	_emu->GetVideoRenderer()->RegisterRenderingDevice(this);
 }
 
@@ -190,6 +213,8 @@ SwitchRenderer::~SwitchRenderer()
 	if(_device) {
 		dkDeviceDestroy(_device);
 	}
+	if(_frontMemBlock) dkMemBlockDestroy(_frontMemBlock);
+	if(_backMemBlock) dkMemBlockDestroy(_backMemBlock);
 	delete[] _frontBuffer;
 	delete[] _backBuffer;
 }
@@ -199,14 +224,8 @@ void SwitchRenderer::SetFrameSize(uint32_t width, uint32_t height)
 	if(width == _frameWidth && height == _frameHeight) {
 		return;
 	}
-	delete[] _frontBuffer;
-	delete[] _backBuffer;
 	_frameWidth = width;
 	_frameHeight = height;
-	_frontBuffer = new uint32_t[width * height];
-	_backBuffer = new uint32_t[width * height];
-	memset(_frontBuffer, 0, width * height * sizeof(uint32_t));
-	memset(_backBuffer, 0, width * height * sizeof(uint32_t));
 }
 
 void SwitchRenderer::UpdateFrame(RenderedFrame& frame)
