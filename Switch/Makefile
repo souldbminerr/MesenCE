@@ -26,8 +26,8 @@ ROMFS		:=	romfs
 # Output folder for uam-compiled shaders inside romfs
 OUT_SHADERS	:=	shaders
 
-APP_TITLE	:=	Mesen Community Edition
-APP_AUTHOR	:=	Mesen Contributors
+APP_TITLE	:=	[QEXTEmu] MesenCE
+APP_AUTHOR	:=	Mesen Contributors, qlaunch-ext
 APP_VERSION	:=	1.0.0
 
 MESEN_DIRS	:=	$(shell find $(TOPDIR)/../Core $(TOPDIR)/../Utilities $(TOPDIR)/../SevenZip $(TOPDIR)/../Lua $(TOPDIR)/source -type d 2>/dev/null)
@@ -36,12 +36,14 @@ SOURCES		:=	$(MESEN_DIRS)
 #---------------------------------------------------------------------------------
 # options for code generation
 #---------------------------------------------------------------------------------
+# warnings reduce performance of compilation for me so i disable them...
+# feel free to re-enable them if you want
 ARCH	:=	-march=armv8-a+crc+crypto -mtune=cortex-a57 -mtp=soft -fPIE
 
-CFLAGS	:=	-g -Wall -O2 -ffunction-sections \
+CFLAGS	:=	-g -w -Ofast -flto -ffunction-sections -fdata-sections -fomit-frame-pointer -fno-strict-aliasing \
 			$(ARCH) $(DEFINES)
 
-CFLAGS	+=	$(INCLUDE) -D__SWITCH__ -DHAVE_LIBNX
+CFLAGS	+=	$(INCLUDE) -D__SWITCH__ -DHAVE_LIBNX -DNDEBUG
 
 CFLAGS	+=	-D_DEFAULT_SOURCE -D_POSIX_C_SOURCE=200809L
 
@@ -49,7 +51,7 @@ CXXFLAGS	:= $(CFLAGS) -std=c++17 -include $(TOPDIR)/source/SwitchCompat.h
 CFLAGS	:= $(CFLAGS) -include $(TOPDIR)/source/SwitchCompat.h
 
 ASFLAGS	:=	-g $(ARCH)
-LDFLAGS	=	-specs=$(DEVKITPRO)/libnx/switch.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)
+LDFLAGS	=	-w -specs=$(DEVKITPRO)/libnx/switch.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)
 
 LIBS	:= -ldeko3d -lnx -lm -lz
 

@@ -150,6 +150,7 @@ SwitchRenderer::SwitchRenderer(Emulator* emu) : _emu(emu)
 	_sampler.wrapMode[2] = DkWrapMode_ClampToEdge;
 
 	_initialized = true;
+	_presentBuffer = new uint32_t[TexSize * TexSize];
 	_emu->GetVideoRenderer()->RegisterRenderingDevice(this);
 }
 
@@ -191,6 +192,7 @@ SwitchRenderer::~SwitchRenderer()
 	}
 	delete[] _frontBuffer;
 	delete[] _backBuffer;
+	delete[] _presentBuffer;
 }
 
 void SwitchRenderer::SetFrameSize(uint32_t width, uint32_t height)
@@ -332,37 +334,42 @@ void SwitchRenderer::Render(RenderSurfaceInfo& emuHud, RenderSurfaceInfo& script
 		return;
 	}
 
-	auto lock = _frameLock.AcquireSafe();
-
-	dkQueueWaitIdle(_queue);
-
-	if(!_hasFrame) {
-		int slot = dkQueueAcquireImage(_queue, _swapchain);
-		dkCmdBufClear(_cmdbuf);
-		DkImageView targetView;
-		dkImageViewDefaults(&targetView, &_swapImages[slot]);
-		dkCmdBufBindRenderTarget(_cmdbuf, &targetView, NULL);
-		DkViewport fullViewport = { 0.0f, 0.0f, (float)FbWidth, (float)FbHeight, 0.0f, 1.0f };
-		DkScissor fullScissor = { 0, 0, FbWidth, FbHeight };
-		dkCmdBufSetViewports(_cmdbuf, 0, &fullViewport, 1);
-		dkCmdBufSetScissors(_cmdbuf, 0, &fullScissor, 1);
-		dkCmdBufClearColorFloat(_cmdbuf, 0, DkColorMask_RGBA, 0.0f, 0.0f, 0.0f, 1.0f);
-		DkCmdList list = dkCmdBufFinishList(_cmdbuf);
-		dkQueueSubmitCommands(_queue, list);
-		dkQueuePresentImage(_queue, _swapchain, slot);
-		return;
-	}
-
-	uint32_t* frame = nullptr;
 	uint32_t width = 0, height = 0;
+	uint32_t* present = nullptr;
+
 	{
+		auto lock = _frameLock.AcquireSafe();
+
+		dkQueueWaitIdle(_queue);
+
+		if(!_hasFrame) {
+			int slot = dkQueueAcquireImage(_queue, _swapchain);
+			dkCmdBufClear(_cmdbuf);
+			DkImageView targetView;
+			dkImageViewDefaults(&targetView, &_swapImages[slot]);
+			dkCmdBufBindRenderTarget(_cmdbuf, &targetView, NULL);
+			DkViewport fullViewport = { 0.0f, 0.0f, (float)FbWidth, (float)FbHeight, 0.0f, 1.0f };
+			DkScissor fullScissor = { 0, 0, FbWidth, FbHeight };
+			dkCmdBufSetViewports(_cmdbuf, 0, &fullViewport, 1);
+			dkCmdBufSetScissors(_cmdbuf, 0, &fullScissor, 1);
+			dkCmdBufClearColorFloat(_cmdbuf, 0, DkColorMask_RGBA, 0.0f, 0.0f, 0.0f, 1.0f);
+			DkCmdList list = dkCmdBufFinishList(_cmdbuf);
+			dkQueueSubmitCommands(_queue, list);
+			dkQueuePresentImage(_queue, _swapchain, slot);
+			return;
+		}
+
 		std::swap(_frontBuffer, _backBuffer);
-		frame = _frontBuffer;
 		width = _frameWidth;
 		height = _frameHeight;
+		if(_frontBuffer && width > 0 && height > 0) {
+			memcpy(_presentBuffer, _frontBuffer, width * height * sizeof(uint32_t));
+			present = _presentBuffer;
+		}
 	}
-	if(frame && width > 0 && height > 0) {
-		PresentFrame(frame, width, height);
+
+	if(present) {
+		PresentFrame(present, width, height);
 	}
 }
 

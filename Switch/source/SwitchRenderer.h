@@ -38,6 +38,7 @@ private:
 	SimpleLock _frameLock;
 	uint32_t* _frontBuffer = nullptr; // consumed by the render thread
 	uint32_t* _backBuffer = nullptr; // written by the emulation thread
+	uint32_t* _presentBuffer = nullptr; // stable buffer for GPU upload (never reallocated)
 	uint32_t _frameWidth = 0;
 	uint32_t _frameHeight = 0;
 	bool _hasFrame = false;

@@ -160,9 +160,9 @@ int main(int argc, char* argv[])
 	}
 
 	/* Load the ROM*/
-	std::string romPath = romArg.empty() ? "romfs:/badapple.nes" : romArg;
+	std::string romPath = romArg.empty() ? "romfs:/yi.sfc" : romArg;
 	SwitchLog("Loading ROM: %s\n", romPath.c_str());
-
+ 
 	/* Set the home folder to proper location for libnx */
 	FolderUtilities::SetHomeFolder("sdmc:/emu/cores/mesen");
 
@@ -178,6 +178,11 @@ int main(int argc, char* argv[])
 	emu->GetSettings()->SetAudioConfig(audio);
 
 	ConfigureControllers(emu->GetSettings());
+
+	/* Disable video filter for performance */
+	VideoConfig vc = emu->GetSettings()->GetVideoConfig();
+	vc.VideoFilter = VideoFilterType::None;
+	emu->GetSettings()->SetVideoConfig(vc);
 
 	unique_ptr<SwitchInput> input(new SwitchInput());
 	KeyManager::RegisterKeyManager(input.get());
