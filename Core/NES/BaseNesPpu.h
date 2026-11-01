@@ -133,6 +133,7 @@ public:
 	virtual void Run(uint64_t runTo) = 0;
 
 	uint32_t GetFrameCount() { return _frameCount; }
+	uint16_t* GetCurrentOutputBuffer() { return _currentOutputBuffer; }
 	uint32_t GetCurrentCycle() { return _cycle; }
 	int32_t GetCurrentScanline() { return _scanline; }
 	int32_t GetScanlineCount() { return _vblankEnd + 2; }

@@ -101,9 +101,19 @@ void NesDefaultVideoFilter::GenerateFullColorPalette(uint32_t paletteBuffer[512]
 void NesDefaultVideoFilter::GetFullPalette(uint32_t palette[512], NesConfig& nesCfg, PpuModel model)
 {
 	if(model == PpuModel::Ppu2C02) {
-		memcpy(palette, nesCfg.UserPalette, sizeof(nesCfg.UserPalette));
-		if(!nesCfg.IsFullColorPalette) {
+		bool allZero = true;
+		for(int i = 0; i < 64; i++) {
+			if(nesCfg.UserPalette[i] != 0) { allZero = false; break; }
+		}
+		if(allZero) {
+			memcpy(palette, _ppuPaletteArgb[0], sizeof(_ppuPaletteArgb[0]));
+		} else {
+			memcpy(palette, nesCfg.UserPalette, sizeof(nesCfg.UserPalette));
+		}
+		if(!nesCfg.IsFullColorPalette && !allZero) {
 			//Generate emphasis palette colors
+			GenerateFullColorPalette(palette, model);
+		} else if(!nesCfg.IsFullColorPalette && allZero) {
 			GenerateFullColorPalette(palette, model);
 		}
 	} else {
