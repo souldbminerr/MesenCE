@@ -8,5 +8,5 @@ layout (binding = 0) uniform sampler2D tex;
 
 void main()
 {
-    outColor = texture(tex, vUv);
+    outColor = texture(tex, vUv).bgra;
 }

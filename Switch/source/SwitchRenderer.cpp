@@ -236,17 +236,9 @@ void SwitchRenderer::PresentFrame(uint32_t* argb, uint32_t width, uint32_t heigh
 		return;
 	}
 
-	// TODO: port to compute shader or make mesen output natively so we dont have to swizzle?
+	// Bulk copy so shader can translate them
 	for(uint32_t y = 0; y < height; y++) {
-		uint8_t* dstRow = _stageCpuAddr + (height - 1 - y) * width * 4;
-		uint32_t* srcRow = argb + y * width;
-		for(uint32_t x = 0; x < width; x++) {
-			uint32_t p = srcRow[x];
-			dstRow[x * 4 + 0] = (uint8_t)((p >> 16) & 0xFF);
-			dstRow[x * 4 + 1] = (uint8_t)((p >> 8) & 0xFF);
-			dstRow[x * 4 + 2] = (uint8_t)(p & 0xFF);
-			dstRow[x * 4 + 3] = 0xFF;
-		}
+		memcpy(_stageCpuAddr + (height - 1 - y) * width * 4, argb + y * width, width * 4);
 	}
 
 	// TODO: Make this work with 1080p FB in docked
