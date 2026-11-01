@@ -20,6 +20,7 @@
 #include "SwitchAudio.h"
 #include "SwitchInput.h"
 #include "SwitchLog.h"
+#include "SwitchSaltyNX.h"
 
 static std::string ToLower(std::string s)
 {
@@ -189,6 +190,7 @@ int main(int argc, char* argv[])
 
 	/* Create the Switch renderer and audio*/
 	SwitchRenderer* renderer = new SwitchRenderer(emu.get());
+	SwitchSaltyNX::Init();
 	if(!renderer->IsInitialized()) {
 		SwitchLog("Failed to initialize deko3d renderer.\n");
 		delete renderer;

@@ -1,4 +1,5 @@
 #include "SwitchRenderer.h"
+#include "SwitchSaltyNX.h"
 #include "Shared/Emulator.h"
 #include "Shared/EmuSettings.h"
 #include "Shared/RenderedFrame.h"
@@ -150,7 +151,6 @@ SwitchRenderer::SwitchRenderer(Emulator* emu) : _emu(emu)
 	_sampler.wrapMode[2] = DkWrapMode_ClampToEdge;
 
 	_initialized = true;
-	_presentBuffer = new uint32_t[TexSize * TexSize];
 	_emu->GetVideoRenderer()->RegisterRenderingDevice(this);
 }
 
@@ -192,7 +192,6 @@ SwitchRenderer::~SwitchRenderer()
 	}
 	delete[] _frontBuffer;
 	delete[] _backBuffer;
-	delete[] _presentBuffer;
 }
 
 void SwitchRenderer::SetFrameSize(uint32_t width, uint32_t height)
@@ -238,10 +237,12 @@ void SwitchRenderer::PresentFrame(uint32_t* argb, uint32_t width, uint32_t heigh
 		return;
 	}
 
-	// Bulk copy so shader can translate them
+	// Bulk copy ARGB bytes; fragment shader swizzles channels (see texture_fsh.glsl).
 	for(uint32_t y = 0; y < height; y++) {
 		memcpy(_stageCpuAddr + (height - 1 - y) * width * 4, argb + y * width, width * 4);
 	}
+
+	DkCopyBuf copySrc = { _stageGpuAddr, 0, 0 };
 
 	// TODO: Make this work with 1080p FB in docked
 	float scale = std::min((float)FbWidth / (float)width, (float)FbHeight / (float)height);
@@ -262,7 +263,6 @@ void SwitchRenderer::PresentFrame(uint32_t* argb, uint32_t width, uint32_t heigh
 
 	DkImageView uploadDestView;
 	dkImageViewDefaults(&uploadDestView, &_uploadImage);
-	DkCopyBuf copySrc = { _stageGpuAddr, 0, 0 };
 	DkImageRect copyDst = { 0, 0, 0, width, height, 1 };
 	dkCmdBufCopyBufferToImage(_cmdbuf, &copySrc, &uploadDestView, &copyDst, 0);
 
@@ -363,14 +363,14 @@ void SwitchRenderer::Render(RenderSurfaceInfo& emuHud, RenderSurfaceInfo& script
 		width = _frameWidth;
 		height = _frameHeight;
 		if(_frontBuffer && width > 0 && height > 0) {
-			memcpy(_presentBuffer, _frontBuffer, width * height * sizeof(uint32_t));
-			present = _presentBuffer;
+			present = _frontBuffer;
 		}
 	}
 
 	if(present) {
 		PresentFrame(present, width, height);
 	}
+	SwitchSaltyNX::ReportFrame(width > 0 ? width : FbWidth, height > 0 ? height : FbHeight, armGetSystemTick());
 }
 
 void SwitchRenderer::Reset()
