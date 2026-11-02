@@ -10,6 +10,7 @@
 
 #include <deko3d.h>
 #include "Shared/Interfaces/IRenderingDevice.h"
+#include "Shared/RenderedFrame.h"
 #include "Utilities/SimpleLock.h"
 
 class Emulator;
@@ -36,13 +37,7 @@ private:
 
 	// Emulator frame
 	SimpleLock _frameLock;
-	DkMemBlock _frontMemBlock = nullptr;
-	DkMemBlock _backMemBlock = nullptr;
-	uint32_t* _frontBuffer = nullptr; // consumed by the render thread
-	uint32_t* _backBuffer = nullptr; // written by the emulation thread
-	DkGpuAddr _frontGpuAddr = 0;
-	DkGpuAddr _backGpuAddr = 0;
-	uint32_t* _presentBuffer = nullptr; // stable buffer for GPU upload (never reallocated)
+	RenderedFrame _pendingFrame;
 	uint32_t _frameWidth = 0;
 	uint32_t _frameHeight = 0;
 	bool _hasFrame = false;
@@ -82,7 +77,7 @@ private:
 	bool _initialized = false;
 
 	void SetFrameSize(uint32_t width, uint32_t height);
-	void PresentFrame(uint32_t* argb, uint32_t width, uint32_t height);
+	void PresentFrame(const uint32_t* argb, uint32_t width, uint32_t height);
 	bool LoadShader(DkShader* shader, const char* path);
 
 public:

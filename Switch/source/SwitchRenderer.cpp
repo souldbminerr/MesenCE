@@ -152,27 +152,7 @@ SwitchRenderer::SwitchRenderer(Emulator* emu) : _emu(emu)
 
 	_initialized = true;
 
-	uint32_t maxBufSize = (TexSize * TexSize * sizeof(uint32_t) + 0xFFF) & ~0xFFF;
-	DkMemBlockMaker frameMemMaker;
-	dkMemBlockMakerDefaults(&frameMemMaker, _device, maxBufSize);
-	frameMemMaker.flags = DkMemBlockFlags_CpuUncached | DkMemBlockFlags_GpuCached;
-	_frontMemBlock = dkMemBlockCreate(&frameMemMaker);
-	_backMemBlock = dkMemBlockCreate(&frameMemMaker);
-	if(_frontMemBlock && _backMemBlock) {
-		_frontBuffer = (uint32_t*)dkMemBlockGetCpuAddr(_frontMemBlock);
-		_backBuffer = (uint32_t*)dkMemBlockGetCpuAddr(_backMemBlock);
-		_frontGpuAddr = dkMemBlockGetGpuAddr(_frontMemBlock);
-		_backGpuAddr = dkMemBlockGetGpuAddr(_backMemBlock);
-		if(!_frontGpuAddr || !_backGpuAddr) {
-			SwitchLog("Bad GPU address\n");
-		}
-	} else {
-		SwitchLog("Fallback to CPU\n");
-		_frontBuffer = new uint32_t[TexSize * TexSize];
-		_backBuffer = new uint32_t[TexSize * TexSize];
-		_frontGpuAddr = 0;
-		_backGpuAddr = 0;
-	}
+
 
 	_emu->GetVideoRenderer()->RegisterRenderingDevice(this);
 }
@@ -213,10 +193,7 @@ SwitchRenderer::~SwitchRenderer()
 	if(_device) {
 		dkDeviceDestroy(_device);
 	}
-	if(_frontMemBlock) dkMemBlockDestroy(_frontMemBlock);
-	if(_backMemBlock) dkMemBlockDestroy(_backMemBlock);
-	delete[] _frontBuffer;
-	delete[] _backBuffer;
+
 }
 
 void SwitchRenderer::SetFrameSize(uint32_t width, uint32_t height)
@@ -235,26 +212,30 @@ void SwitchRenderer::UpdateFrame(RenderedFrame& frame)
 		return;
 	}
 	SetFrameSize(frame.Width, frame.Height);
-	memcpy(_backBuffer, frame.FrameBuffer, frame.Width * frame.Height * sizeof(uint32_t));
+	{
+		auto lock = _frameLock.AcquireSafe();
+		_pendingFrame = frame;
+	}
 	_hasFrame = true;
 }
 
 void SwitchRenderer::ClearFrame()
 {
-	if(_frontBuffer && _backBuffer) {
-		memset(_backBuffer, 0, _frameWidth * _frameHeight * sizeof(uint32_t));
-		_hasFrame = true;
-	}
+	if(!_initialized) return;
+	memset(_stageCpuAddr, 0, TexSize * TexSize * 4);
+	_frameWidth = 0;
+	_frameHeight = 0;
+	_hasFrame = true;
 }
 
-void SwitchRenderer::PresentFrame(uint32_t* argb, uint32_t width, uint32_t height)
+void SwitchRenderer::PresentFrame(const uint32_t* argb, uint32_t width, uint32_t height)
 {
 	if(width == 0 || height == 0 || width > TexSize || height > TexSize) {
 		SwitchLog("Can't present invalid frame\n");
 		return;
 	}
 
-	// Bulk copy ARGB bytes; fragment shader swizzles channels (see texture_fsh.glsl).
+	// Zero-copy: copy directly from source (may be emulation's buffer) into staging with vertical flip.
 	for(uint32_t y = 0; y < height; y++) {
 		memcpy(_stageCpuAddr + (height - 1 - y) * width * 4, argb + y * width, width * 4);
 	}
@@ -314,9 +295,13 @@ void SwitchRenderer::PresentFrame(uint32_t* argb, uint32_t width, uint32_t heigh
 	DkViewport viewport = { dstX, dstY, dstW, dstH, 0.0f, 1.0f };
 	int32_t scX = (int32_t)dstX;
 	int32_t scY = (int32_t)dstY;
+	if(scX < 0) scX = 0;
+	if(scY < 0) scY = 0;
 	uint32_t scW = (uint32_t)dstW;
 	uint32_t scH = (uint32_t)dstH;
-	DkScissor scissor = { scX, scY, scW, scH };
+	if(scX + (int32_t)scW > (int32_t)FbWidth) scW = FbWidth - (uint32_t)scX;
+	if(scY + (int32_t)scH > (int32_t)FbHeight) scH = FbHeight - (uint32_t)scY;
+	DkScissor scissor = { (uint32_t)scX, (uint32_t)scY, scW, scH };
 	dkCmdBufSetViewports(_cmdbuf, 0, &viewport, 1);
 	dkCmdBufSetScissors(_cmdbuf, 0, &scissor, 1);
 
@@ -374,11 +359,15 @@ void SwitchRenderer::Render(RenderSurfaceInfo& emuHud, RenderSurfaceInfo& script
 			return;
 		}
 
-		std::swap(_frontBuffer, _backBuffer);
+		RenderedFrame frame;
+		{
+			auto lock = _frameLock.AcquireSafe();
+			frame = _pendingFrame;
+		}
 		width = _frameWidth;
 		height = _frameHeight;
-		if(_frontBuffer && width > 0 && height > 0) {
-			present = _frontBuffer;
+		if(frame.FrameBuffer && width > 0 && height > 0) {
+			present = (uint32_t*)frame.FrameBuffer;
 		}
 	}
 

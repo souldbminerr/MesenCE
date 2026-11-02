@@ -149,6 +149,7 @@ int main(int argc, char* argv[])
 	}
 
 	romfsInit();
+	appletInitialize();
 
 	/* Set the system to emulate*/
 	ConsoleType expectedConsole = ConsoleType::Nes;
@@ -223,16 +224,14 @@ int main(int argc, char* argv[])
 	/* Pin emulation thread to core 0 */
 	svcSetThreadCoreMask(CUR_THREAD_HANDLE, 1, 0);
 
-	apmInitialize();
 
 	/* Give ourselves free performance */
 	/* CPU 1785MHz GPU 76MHz DRAM 1600MHz */
 	/* This should not increase power draw */
 	/* Refer to https://switchbrew.org/wiki/PTM_services#PerformanceConfiguration */
-
+	appletLockExit();
+	apmSetPerformanceConfiguration(ApmPerformanceMode_Normal, 0x92220009);
 	apmSetPerformanceConfiguration(ApmPerformanceMode_Boost, 0x92220009);
-
-	apmExit();
 
 	emu->Run();
 
@@ -242,5 +241,6 @@ int main(int argc, char* argv[])
 	input.reset();
 
 	romfsExit();
+	appletExit();
 	return 0;
 }
