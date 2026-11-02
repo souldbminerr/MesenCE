@@ -223,13 +223,24 @@ int main(int argc, char* argv[])
 	/* Pin emulation thread to core 0 */
 	svcSetThreadCoreMask(CUR_THREAD_HANDLE, 1, 0);
 
+	apmInitialize();
+
+	/* Give ourselves free performance */
+	/* CPU 1785MHz GPU 76MHz DRAM 1600MHz */
+	/* This should not increase power draw */
+	/* Refer to https://switchbrew.org/wiki/PTM_services#PerformanceConfiguration */
+
+	apmSetPerformanceConfiguration(ApmPerformanceMode_Boost, 0x92220009);
+
+	apmExit();
+
 	emu->Run();
 
-	// emu->Stop(true);
-	// emu->Release();
-	// emu.reset();
-	// input.reset();
+	emu->Stop(true);
+	emu->Release();
+	emu.reset();
+	input.reset();
 
-	// romfsExit();
-	// return 0;
+	romfsExit();
+	return 0;
 }

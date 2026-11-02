@@ -1,4 +1,11 @@
 #include "pch.h"
+#ifdef __SWITCH__
+#define MemoryType LibnxMemoryType
+#define DebugEventType LibnxDebugEventType
+#include <switch.h>
+#undef MemoryType
+#undef DebugEventType
+#endif
 #include "Shared/Video/VideoDecoder.h"
 #include "Shared/Video/VideoRenderer.h"
 #include "Shared/Video/BaseVideoFilter.h"
@@ -147,6 +154,9 @@ void VideoDecoder::DecodeFrame(bool forRewind)
 
 void VideoDecoder::DecodeThread()
 {
+#ifdef __SWITCH__
+	svcSetThreadCoreMask(CUR_THREAD_HANDLE, 1 << 2, 2);
+#endif
 	//This thread will decode the PPU's output (color ID to RGB, intensify r/g/b and produce a HD version of the frame if needed)
 	while(!_stopFlag.load()) {
 		//DecodeFrame returns the final ARGB frame we want to display in the emulator window

@@ -1,4 +1,11 @@
 #include "pch.h"
+#ifdef __SWITCH__
+#define MemoryType LibnxMemoryType
+#define DebugEventType LibnxDebugEventType
+#include <switch.h>
+#undef MemoryType
+#undef DebugEventType
+#endif
 #include "Shared/Video/VideoRenderer.h"
 #include "Shared/Video/VideoDecoder.h"
 #include "Shared/Interfaces/IRenderingDevice.h"
@@ -70,6 +77,9 @@ void VideoRenderer::StopThread()
 
 void VideoRenderer::RenderThread()
 {
+#ifdef __SWITCH__
+	svcSetThreadCoreMask(CUR_THREAD_HANDLE, 1 << 1, 1);
+#endif
 	if(_renderer) {
 		_renderer->OnRendererThreadStarted();
 	}
