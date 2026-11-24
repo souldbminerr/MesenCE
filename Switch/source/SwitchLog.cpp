@@ -48,8 +48,9 @@ void SwitchLog(const char* format, ...)
 	EnsureLogEnabled();
 
 	printf("%s", buffer);
+	#ifndef __SWITCH2__
 	svcOutputDebugString(buffer, (u64)length);
-
+	#endif
 	if(s_logToFile && s_logFile) {
 		fputs(buffer, s_logFile);
 		fflush(s_logFile);
