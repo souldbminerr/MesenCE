@@ -1,13 +1,40 @@
 #---------------------------------------------------------------------------------
 .SUFFIXES:
 #---------------------------------------------------------------------------------
+# Unified Switch Makefile.
+#
+#   make nx       - build for Switch 1 (libnx / deko3d / uam)
+#   make ounce    - build for Switch 2 (libounce / drako3d / uam2)
+#   make          - same as 'make nx'
+#
+# A PLATFORM can also be selected directly:
+#   make PLATFORM=ounce
+#
+# Each platform keeps its own object directory (build / build-ounce) so
+# switching back and forth does not force a full rebuild. Both platforms
+# produce $(TARGET).nro in this directory, so building one overwrites the
+# other's output.
+#
+#   make clean         - remove both platforms' objects and output files
+#   make clean-nx      - remove Switch 1 objects
+#   make clean-ounce   - remove Switch 2 objects
+#---------------------------------------------------------------------------------
 
 ifeq ($(strip $(DEVKITPRO)),)
 $(error "Please set DEVKITPRO in your environment. export DEVKITPRO=<path to>/devkitpro")
 endif
 
+PLATFORM ?= nx
+ifeq ($(filter nx ounce,$(PLATFORM)),)
+$(error "Unknown PLATFORM '$(PLATFORM)'. Use 'make nx' or 'make ounce' (or PLATFORM=nx|ounce)")
+endif
+
 TOPDIR ?= $(CURDIR)
+ifeq ($(PLATFORM),ounce)
+include $(DEVKITPRO)/libounce/switch2_rules
+else
 include $(DEVKITPRO)/libnx/switch_rules
+endif
 
 #---------------------------------------------------------------------------------
 # TARGET is the name of the output
@@ -18,7 +45,11 @@ include $(DEVKITPRO)/libnx/switch_rules
 # ROMFS is the directory containing data to be added to RomFS, relative to the Makefile
 #---------------------------------------------------------------------------------
 TARGET		:=	Mesen
+ifeq ($(PLATFORM),nx)
+BUILD		:=	build-nx
+else
 BUILD		:=	build
+endif
 DATA		:=	data
 INCLUDES	:=	include source .. ../Core ../Utilities
 ROMFS		:=	romfs
@@ -26,9 +57,9 @@ ROMFS		:=	romfs
 # Output folder for uam-compiled shaders inside romfs
 OUT_SHADERS	:=	shaders
 
-APP_TITLE	:=	[QEXTEmu] MesenCE
+APP_TITLE	:=	MesenCE
 APP_AUTHOR	:=	Mesen Contributors, qlaunch-ext
-APP_VERSION	:=	1.0.0
+APP_VERSION	:=	2.2.1
 
 MESEN_DIRS	:=	$(shell find $(TOPDIR)/../Core $(TOPDIR)/../Utilities $(TOPDIR)/../SevenZip $(TOPDIR)/../Lua $(TOPDIR)/source -type d 2>/dev/null)
 SOURCES		:=	$(MESEN_DIRS)
@@ -38,7 +69,11 @@ SOURCES		:=	$(MESEN_DIRS)
 #---------------------------------------------------------------------------------
 # warnings reduce performance of compilation for me so i disable them...
 # feel free to re-enable them if you want
+ifeq ($(PLATFORM),ounce)
+ARCH	:=	$(SWITCH2_CPU) -mtp=soft -fPIE
+else
 ARCH	:=	-march=armv8-a+crc+crypto -mtune=cortex-a57 -mtp=soft -fPIE
+endif
 
 CFLAGS	:=	-g -w -Ofast -flto -ffunction-sections -fdata-sections -fomit-frame-pointer -fno-strict-aliasing \
 			$(ARCH) $(DEFINES)
@@ -51,9 +86,21 @@ CXXFLAGS	:= $(CFLAGS) -std=c++17 -include $(TOPDIR)/source/SwitchCompat.h
 CFLAGS	:= $(CFLAGS) -include $(TOPDIR)/source/SwitchCompat.h
 
 ASFLAGS	:=	-g $(ARCH)
+ifeq ($(PLATFORM),ounce)
+LDFLAGS	=	-w -specs=$(DEVKITPRO)/libounce/switch.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)
+
+LIBS	:= -ldrako3d -lnx -lm -lz
+
+# Shader compiler for Switch 2
+UAM	:=	uam2
+else
 LDFLAGS	=	-w -specs=$(DEVKITPRO)/libnx/switch.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)
 
 LIBS	:= -ldeko3d -lnx -lm -lz
+
+# Shader compiler for Switch 1
+UAM	:=	uam
+endif
 
 #---------------------------------------------------------------------------------
 # list of directories containing libraries, this must be the top level containing
@@ -168,10 +215,19 @@ ifneq ($(ROMFS),)
 	export NROFLAGS += --romfsdir=$(CURDIR)/$(ROMFS)
 endif
 
-.PHONY: all clean
+.PHONY: all nx ounce _build clean clean-nx clean-ounce
 
 #---------------------------------------------------------------------------------
-all: $(ROMFS_TARGETS) | $(BUILD)
+# Default build is Switch 1. Use 'make ounce' for Switch 2.
+all: nx
+
+nx:
+	@$(MAKE) --no-print-directory -f $(CURDIR)/Makefile PLATFORM=nx _build
+
+ounce:
+	@$(MAKE) --no-print-directory -f $(CURDIR)/Makefile PLATFORM=ounce _build
+
+_build: $(ROMFS_TARGETS) | $(BUILD)
 	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile
 
 $(BUILD):
@@ -186,38 +242,40 @@ $(ROMFS_FOLDERS):
 
 $(ROMFS_SHADERS)/%_vsh.dksh: %_vsh.glsl
 	@echo {vert} $(notdir $<)
-	@uam -s vert -o $@ $<
+	@$(UAM) -s vert -o $@ $<
 
 $(ROMFS_SHADERS)/%_tcsh.dksh: %_tcsh.glsl
 	@echo {tess_ctrl} $(notdir $<)
-	@uam -s tess_ctrl -o $@ $<
+	@$(UAM) -s tess_ctrl -o $@ $<
 
 $(ROMFS_SHADERS)/%_tesh.dksh: %_tesh.glsl
 	@echo {tess_eval} $(notdir $<)
-	@uam -s tess_eval -o $@ $<
+	@$(UAM) -s tess_eval -o $@ $<
 
 $(ROMFS_SHADERS)/%_gsh.dksh: %_gsh.glsl
 	@echo {geom} $(notdir $<)
-	@uam -s geom -o $@ $<
+	@$(UAM) -s geom -o $@ $<
 
 $(ROMFS_SHADERS)/%_fsh.dksh: %_fsh.glsl
 	@echo {frag} $(notdir $<)
-	@uam -s frag -o $@ $<
+	@$(UAM) -s frag -o $@ $<
 
 $(ROMFS_SHADERS)/%.dksh: %.glsl
 	@echo {comp} $(notdir $<)
-	@uam -s comp -o $@ $<
+	@$(UAM) -s comp -o $@ $<
 
 endif
 
 #---------------------------------------------------------------------------------
-clean:
-	@echo clean ...
-ifeq ($(strip $(APP_JSON)),)
-	@rm -fr $(BUILD) $(TARGET).nro $(TARGET).nacp $(TARGET).elf
-else
-	@rm -fr $(BUILD) $(TARGET).nsp $(TARGET).nso $(TARGET).npdm $(TARGET).elf
-endif
+clean: clean-nx clean-ounce
+
+clean-nx:
+	@echo clean nx ...
+	@rm -fr build $(TARGET).nro $(TARGET).nacp $(TARGET).elf $(TARGET).nsp $(TARGET).nso $(TARGET).npdm
+
+clean-ounce:
+	@echo clean ounce ...
+	@rm -fr build-ounce $(TARGET).nro $(TARGET).nacp $(TARGET).elf $(TARGET).nsp $(TARGET).nso $(TARGET).npdm
 
 
 #---------------------------------------------------------------------------------

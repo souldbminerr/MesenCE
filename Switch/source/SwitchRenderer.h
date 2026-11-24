@@ -8,7 +8,11 @@
 #undef MemoryType
 #undef DebugEventType
 
+#ifdef __SWITCH2__
+#include <drako3d.h>
+#else
 #include <deko3d.h>
+#endif
 #include "Shared/Interfaces/IRenderingDevice.h"
 #include "Shared/RenderedFrame.h"
 #include "Utilities/SimpleLock.h"
@@ -25,8 +29,13 @@ public:
 	};
 
 private:
+	#ifdef __SWITCH2__
+	static constexpr uint32_t FbWidth = 1920;
+	static constexpr uint32_t FbHeight = 1080;
+	#else
 	static constexpr uint32_t FbWidth = 1280;
 	static constexpr uint32_t FbHeight = 720;
+	#endif
 	static constexpr uint32_t FbCount = 2;
 	static constexpr uint32_t CodeMemSize = 64 * 1024;
 	static constexpr uint32_t CmdMemSize = 16 * 1024;

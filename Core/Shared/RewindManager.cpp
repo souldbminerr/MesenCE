@@ -230,7 +230,7 @@ void RewindManager::ForceStop(bool deleteFutureData)
 			if(!_videoHistory.empty()) {
 				//Update the frame on the screen to match the last frame generated during step back
 				//Needed to update the screen when stepping back to the previous frame
-				VideoFrame& frameData = _videoHistory.back();
+				RewindVideoFrame& frameData = _videoHistory.back();
 				RenderedFrame oldFrame(frameData.Data.data(), frameData.Width, frameData.Height, frameData.Scale, frameData.FrameNumber, frameData.InputData);
 				_emu->GetVideoRenderer()->UpdateFrame(oldFrame);
 			}
@@ -332,7 +332,7 @@ void RewindManager::ProcessFrame(RenderedFrame& frame, bool forRewind)
 			return;
 		}
 
-		VideoFrame newFrame;
+		RewindVideoFrame newFrame;
 		newFrame.Data = vector<uint32_t>((uint32_t*)frame.FrameBuffer, (uint32_t*)frame.FrameBuffer + frame.Width * frame.Height);
 		newFrame.Width = frame.Width;
 		newFrame.Height = frame.Height;
@@ -352,7 +352,7 @@ void RewindManager::ProcessFrame(RenderedFrame& frame, bool forRewind)
 			_rewindState = RewindState::Started;
 			_settings->ClearFlag(EmulationFlags::MaximumSpeed);
 			if(!_videoHistory.empty()) {
-				VideoFrame& frameData = _videoHistory.back();
+				RewindVideoFrame& frameData = _videoHistory.back();
 				RenderedFrame oldFrame(frameData.Data.data(), frameData.Width, frameData.Height, frameData.Scale, frameData.FrameNumber, frameData.InputData);
 				_emu->GetVideoRenderer()->UpdateFrame(oldFrame);
 				_videoHistory.pop_back();
@@ -362,7 +362,7 @@ void RewindManager::ProcessFrame(RenderedFrame& frame, bool forRewind)
 		//Display nothing while resyncing
 	} else if(_rewindState == RewindState::Debugging) {
 		//Keep the last frame to be able to display it once step back reaches its target
-		VideoFrame newFrame;
+		RewindVideoFrame newFrame;
 		newFrame.Data = vector<uint32_t>((uint32_t*)frame.FrameBuffer, (uint32_t*)frame.FrameBuffer + frame.Width * frame.Height);
 		newFrame.Width = frame.Width;
 		newFrame.Height = frame.Height;

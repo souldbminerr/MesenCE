@@ -15,7 +15,7 @@ class Debugger;
 class DebugHud;
 class SoundMixer;
 class VideoRenderer;
-class VideoDecoder;
+class EmuVideoDecoder;
 class NotificationManager;
 class EmuSettings;
 class SaveStateManager;
@@ -87,7 +87,7 @@ private:
 	const unique_ptr<BatteryManager> _batteryManager;
 	const unique_ptr<SoundMixer> _soundMixer;
 	const unique_ptr<VideoRenderer> _videoRenderer;
-	const unique_ptr<VideoDecoder> _videoDecoder;
+	const unique_ptr<EmuVideoDecoder> _videoDecoder;
 	const unique_ptr<SaveStateManager> _saveStateManager;
 	const unique_ptr<CheatManager> _cheatManager;
 	const unique_ptr<MovieManager> _movieManager;
@@ -221,7 +221,7 @@ public:
 
 	SoundMixer* GetSoundMixer() { return _soundMixer.get(); }
 	VideoRenderer* GetVideoRenderer() { return _videoRenderer.get(); }
-	VideoDecoder* GetVideoDecoder() { return _videoDecoder.get(); }
+	EmuVideoDecoder* GetVideoDecoder() { return _videoDecoder.get(); }
 	ShortcutKeyHandler* GetShortcutKeyHandler() { return _shortcutKeyHandler.get(); }
 	NotificationManager* GetNotificationManager() { return _notificationManager.get(); }
 	EmuSettings* GetSettings() { return _settings.get(); }

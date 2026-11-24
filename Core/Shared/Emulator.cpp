@@ -55,7 +55,7 @@ Emulator::Emulator()
 	  _batteryManager(new BatteryManager()),
 	  _soundMixer(new SoundMixer(this)),
 	  _videoRenderer(new VideoRenderer(this)),
-	  _videoDecoder(new VideoDecoder(this)),
+	  _videoDecoder(new EmuVideoDecoder(this)),
 	  _saveStateManager(new SaveStateManager(this)),
 	  _cheatManager(new CheatManager(this)),
 	  _movieManager(new MovieManager(this)),

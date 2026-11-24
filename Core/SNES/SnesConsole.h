@@ -19,7 +19,7 @@ class Debugger;
 class DebugHud;
 class SoundMixer;
 class VideoRenderer;
-class VideoDecoder;
+class EmuVideoDecoder;
 class NotificationManager;
 class EmuSettings;
 class SaveStateManager;

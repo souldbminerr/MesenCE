@@ -11,7 +11,7 @@ class RotateFilter;
 class IRenderingDevice;
 class Emulator;
 
-class VideoDecoder
+class EmuVideoDecoder
 {
 private:
 	Emulator* _emu;
@@ -44,8 +44,8 @@ private:
 	void DecodeThread();
 
 public:
-	VideoDecoder(Emulator* console);
-	~VideoDecoder();
+	EmuVideoDecoder(Emulator* console);
+	~EmuVideoDecoder();
 
 	void Init();
 

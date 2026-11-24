@@ -4,3 +4,4 @@ Mesen.nacp
 Mesen.map
 Mesen.lst
 romfs/shaders/*.dksh
+build-ounce/

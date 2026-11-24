@@ -20,7 +20,7 @@
 #include "Shared/Video/DebugHud.h"
 #include "Shared/RenderedFrame.h"
 
-VideoDecoder::VideoDecoder(Emulator* emu)
+EmuVideoDecoder::EmuVideoDecoder(Emulator* emu)
 {
 	_emu = emu;
 	_frameChanged = false;
@@ -29,18 +29,18 @@ VideoDecoder::VideoDecoder(Emulator* emu)
 	_lastFrameSize = _baseFrameSize;
 }
 
-VideoDecoder::~VideoDecoder()
+EmuVideoDecoder::~EmuVideoDecoder()
 {
 	StopThread();
 }
 
-void VideoDecoder::Init()
+void EmuVideoDecoder::Init()
 {
 	UpdateVideoFilter();
 	_videoFilter->SetBaseFrameInfo(_baseFrameSize);
 }
 
-FrameInfo VideoDecoder::GetBaseFrameInfo(bool removeOverscan)
+FrameInfo EmuVideoDecoder::GetBaseFrameInfo(bool removeOverscan)
 {
 	if(removeOverscan) {
 		OverscanDimensions overscan = _emu->GetSettings()->GetOverscan();
@@ -64,12 +64,12 @@ FrameInfo VideoDecoder::GetBaseFrameInfo(bool removeOverscan)
 	}
 }
 
-FrameInfo VideoDecoder::GetFrameInfo()
+FrameInfo EmuVideoDecoder::GetFrameInfo()
 {
 	return _lastFrameSize;
 }
 
-void VideoDecoder::UpdateVideoFilter()
+void EmuVideoDecoder::UpdateVideoFilter()
 {
 	VideoFilterType newFilter = _emu->GetSettings()->GetVideoConfig().VideoFilter;
 	ConsoleType consoleType = _emu->GetConsoleType();
@@ -95,7 +95,7 @@ void VideoDecoder::UpdateVideoFilter()
 	}
 }
 
-void VideoDecoder::DecodeFrame(bool forRewind)
+void EmuVideoDecoder::DecodeFrame(bool forRewind)
 {
 	UpdateVideoFilter();
 
@@ -152,7 +152,7 @@ void VideoDecoder::DecodeFrame(bool forRewind)
 	_frameChanged = false;
 }
 
-void VideoDecoder::DecodeThread()
+void EmuVideoDecoder::DecodeThread()
 {
 #ifdef __SWITCH__
 	svcSetThreadCoreMask(CUR_THREAD_HANDLE, 1 << 2, 2);
@@ -171,12 +171,12 @@ void VideoDecoder::DecodeThread()
 	}
 }
 
-uint32_t VideoDecoder::GetFrameCount()
+uint32_t EmuVideoDecoder::GetFrameCount()
 {
 	return _frameCount;
 }
 
-void VideoDecoder::WaitForAsyncFrameDecode()
+void EmuVideoDecoder::WaitForAsyncFrameDecode()
 {
 	while(_frameChanged) {
 		//Spin until decode is done
@@ -184,7 +184,7 @@ void VideoDecoder::WaitForAsyncFrameDecode()
 	}
 }
 
-void VideoDecoder::UpdateFrame(RenderedFrame frame, bool sync, bool forRewind)
+void EmuVideoDecoder::UpdateFrame(RenderedFrame frame, bool sync, bool forRewind)
 {
 	if(_emu->IsRunAheadFrame()) {
 		return;
@@ -210,7 +210,7 @@ void VideoDecoder::UpdateFrame(RenderedFrame frame, bool sync, bool forRewind)
 	_frameCount++;
 }
 
-void VideoDecoder::StartThread()
+void EmuVideoDecoder::StartThread()
 {
 	auto lock = _stopStartLock.AcquireSafe();
 	if(!_decodeThread) {
@@ -224,11 +224,11 @@ void VideoDecoder::StartThread()
 
 		_emu->GetVideoRenderer()->ClearFrame();
 
-		_decodeThread.reset(new thread(&VideoDecoder::DecodeThread, this));
+		_decodeThread.reset(new thread(&EmuVideoDecoder::DecodeThread, this));
 	}
 }
 
-void VideoDecoder::StopThread()
+void EmuVideoDecoder::StopThread()
 {
 	auto lock = _stopStartLock.AcquireSafe();
 	_stopFlag = true;
@@ -243,19 +243,19 @@ void VideoDecoder::StopThread()
 	}
 }
 
-bool VideoDecoder::IsRunning()
+bool EmuVideoDecoder::IsRunning()
 {
 	return _decodeThread != nullptr;
 }
 
-void VideoDecoder::TakeScreenshot(string romName)
+void EmuVideoDecoder::TakeScreenshot(string romName)
 {
 	if(_videoFilter) {
 		_videoFilter->TakeScreenshot(romName.empty() ? _emu->GetRomInfo().RomFile.GetFileName() : romName, _videoFilterType);
 	}
 }
 
-void VideoDecoder::TakeScreenshot(std::stringstream& stream)
+void EmuVideoDecoder::TakeScreenshot(std::stringstream& stream)
 {
 	if(_videoFilter) {
 		_videoFilter->TakeScreenshot(_videoFilterType, "", &stream);

@@ -224,7 +224,7 @@ int main(int argc, char* argv[])
 	/* Pin emulation thread to core 0 */
 	svcSetThreadCoreMask(CUR_THREAD_HANDLE, 1, 0);
 
-
+	#ifndef __SWITCH2__
 	/* Give ourselves free performance */
 	/* CPU 1785MHz GPU 76MHz DRAM 1600MHz */
 	/* This should not increase power draw */
@@ -232,7 +232,7 @@ int main(int argc, char* argv[])
 	appletLockExit();
 	apmSetPerformanceConfiguration(ApmPerformanceMode_Normal, 0x92220009);
 	apmSetPerformanceConfiguration(ApmPerformanceMode_Boost, 0x92220009);
-
+	#endif
 	emu->Run();
 
 	emu->Stop(true);

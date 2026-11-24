@@ -19,7 +19,7 @@ enum class RewindState
 	Debugging = 4
 };
 
-struct VideoFrame
+struct RewindVideoFrame
 {
 	vector<uint32_t> Data;
 	uint32_t Width = 0;
@@ -54,8 +54,8 @@ private:
 	RewindState _rewindState = RewindState::Stopped;
 	int32_t _framesToFastForward = 0;
 
-	deque<VideoFrame> _videoHistory;
-	vector<VideoFrame> _videoHistoryBuilder;
+	deque<RewindVideoFrame> _videoHistory;
+	vector<RewindVideoFrame> _videoHistoryBuilder;
 	deque<int16_t> _audioHistory;
 	vector<int16_t> _audioHistoryBuilder;
 
